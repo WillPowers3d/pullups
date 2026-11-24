@@ -95,9 +95,18 @@ recovery.
   retractions. https://www.strengthlog.com/pull-up/
 
 **Engine rules.**
-- `CROSS_DAYS_DEFAULT = 2`, adjustable from 1 to 3. Cross-training goes on non-pull days.
+- `CROSS_DAYS_DEFAULT = 2`, adjustable from **2 to 3** (`CROSS_DAYS_MIN` was raised from 1).
+  Cross-training goes on non-pull days.
 - Preferred cross days are **not** the calendar day before a pull day. If there aren't enough
   such days, fall back to those slots (see `placeCrossDays` tie-break in DESIGN.md).
+- **William's rest cap (not a book number, `INTERPRETATION` of his instruction "no more
+  than 3 rest days"):**
+  - `maxRestDaysPerWeek = MAX_REST_DAYS_PER_WEEK = 3` → at least 4 training days per week
+    (2 pull + ≥2 cross).
+  - `maxConsecutiveRestDays = MAX_CONSECUTIVE_REST_DAYS = 3` → no 4-day rest run, including
+    across week boundaries and through the taper.
+  - Worked: Mon/Thu pulls with Tue/Fri cross → rest Wed, Sat, Sun (3 rest days; Sat–Sun
+    wrap is 2 consecutive). A 1-cross-day week would have 4 rest days and is illegal.
 - This app owns its catalog (`TRAIN_CONFIG.CROSS_EXERCISES`): push-up, ring-dip (needs rings),
   plank, face-pull, hollow-body, air-squat, reverse-lunge, wall-sit. Optional outbound "Record
   for points" links go to Pullups With Friends; they are not required.
@@ -312,5 +321,6 @@ on PR day.
 | 12 | 45% (−55%) | Same 2 pull days. Last weekly-pull ≥ 3 calendar days before PR. P3 sets = 0 |
 | PR day | | Full warm-up, then the max test protocol |
 
-- Cross-training volume drops to 2 rounds in weeks 11–12. Constants: `TAPER_WEEKS = 2`,
-  `TAPER_VOLUME = [0.7, 0.45]`.
+- Cross-training **days stay on the calendar** in weeks 11–12 (William's rest cap). Volume
+  drops to 2 rounds (`CROSS_ROUNDS_TAPER`) — low intensity, not rest. Constants:
+  `TAPER_WEEKS = 2`, `TAPER_VOLUME = [0.7, 0.45]`.

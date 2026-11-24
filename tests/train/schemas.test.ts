@@ -13,6 +13,7 @@ describe.skip("T12 zod schemas", () => {
     expect(schema.safeParse({ pullDays: [1] }).success).toBe(false);
     expect(schema.safeParse({ pullDays: [1, 8] }).success).toBe(false);
     expect(schema.safeParse({ crossDaysPerWeek: 0 }).success).toBe(false);
+    expect(schema.safeParse({ crossDaysPerWeek: 1 }).success).toBe(false);
     expect(schema.safeParse({ crossDaysPerWeek: 4 }).success).toBe(false);
   });
 

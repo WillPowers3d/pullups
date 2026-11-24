@@ -29,7 +29,7 @@ Handlers: parse with zod, call repo + engine, return JSON. **No prescription mat
   hasRings: boolean,
   bodyKg: number | null,
   pullDays: [number, number], // length 2, each 0–6 (gap check is engine, not zod)
-  crossDaysPerWeek: number    // 1–3
+  crossDaysPerWeek: number    // 2–3 (CROSS_DAYS_MIN / MAX; 1 is illegal)
 }
 ```
 

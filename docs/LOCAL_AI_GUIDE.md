@@ -69,6 +69,7 @@ Dev server: `npm run dev` then open **http://localhost:3000/app** (basePath is `
 - Sync `params` (`{ params: { id } }`) — this Next.js version needs `await params`.
 - Importing `better-sqlite3` from a client component.
 - Changing P3 set counts inside `progress()` (set counts belong to `prescribePullSession`).
+- Dropping taper cross days (they stay; intensity drops). Scheduling 1 cross day or 4 rest days.
 - Implementing T02–T17 in one shot. Don't.
 
 ## Ticket map
@@ -77,7 +78,7 @@ Dev server: `npm run dev` then open **http://localhost:3000/app** (basePath is `
 | --- | --- | --- |
 | T01 | done in the scaffold (`config.ts`, `types.ts`) | `tests/train/config.test.ts` |
 | T02 | `engine/ladder.ts` | `tests/train/ladder.test.ts` |
-| T03 | `engine/schedule.ts` (validate + placeCrossDays) | `tests/train/schedule.test.ts` (first describe) |
+| T03 | `engine/schedule.ts` (validate + placeCrossDays + rest-cap helpers) | `tests/train/schedule.test.ts` (first describe) |
 | T04 | `engine/schedule.ts` (blockDates + legalMoveDays) | `tests/train/schedule.test.ts` (second describe) |
 | T05 | `engine/prescribe.ts` (warmup, order, volume) | `tests/train/prescribe.test.ts` (T05) |
 | T06 | `engine/prescribe.ts` (pull session) | `tests/train/prescribe.test.ts` (T06) |

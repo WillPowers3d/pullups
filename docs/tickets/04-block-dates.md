@@ -23,7 +23,7 @@ Worked uncompressed: `blockDates("2026-11-23","2027-02-21")` → start `2026-11-
 
 - Empty if `session.type === "pr_attempt"`.
 - Candidates = other `YYYY-MM-DD` in the same Mon–Sun week.
-- A candidate is legal if, after moving this session there, no two sessions share a date, weekly-pull slots still have ≥ 3 calendar days between consecutive pulls **in the whole plan**, last weekly-pull stays ≥ 3 days before `prDate`, and a cross session does not land on a weekly-pull date.
+- A candidate is legal if, after moving this session there, no two sessions share a date, weekly-pull slots still have ≥ 3 calendar days between consecutive pulls **in the whole plan**, last weekly-pull stays ≥ 3 days before `prDate`, a cross session does not land on a weekly-pull date, and William's rest cap still holds (≤ `MAX_REST_DAYS_PER_WEEK` rest days in that week, ≤ `MAX_CONSECUTIVE_REST_DAYS` consecutive rest on `[plan.startDate, plan.prDate]`). The T04 fixture includes Tue/Fri cross days so the week already has 4 training days.
 
 ## Verify
 

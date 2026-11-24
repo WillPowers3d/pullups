@@ -28,6 +28,7 @@ The original draft targeted `/train` inside Pullups With Friends. This app is a 
 10. **`volumeScore` rounds the SUM** to 1 decimal, not each term. Worked example 51.5 depends on this.
 11. **Week 0 baseline** is created during onboarding, not by `generatePlan`. **`pr_attempt` is extra** on `prDate`; it is not one of the two weekly-pull slots.
 12. **Session machine holds the plan** (`warmup` + `sets` on state). `REST_END` / `REST_TICK` cannot fire early.
+13. **William's rest cap (not a book number):** `maxRestDaysPerWeek = 3` and `maxConsecutiveRestDays = 3`. Cross-day minimum is 2. Taper keeps cross days at low intensity instead of turning them into rest.
 
 ---
 
@@ -89,7 +90,7 @@ Public URL = `/app` + path. In code, paths have **no** `/app` prefix.
    - Equipment: bar, bands (none/light/heavy/both), weight belt/vest, rings.
    - Bodyweight kg, optional.
    - Two weekdays for pull days. Default Mon+Thu. Validate with `validatePullDays`.
-   - Cross days per week 1–3, default 2.
+   - Cross days per week 2–3, default 2 (William's rest cap: at least 4 training days).
    - PR date: default 12 weeks out, landing on a Sunday if possible. If fewer than 12 weeks remain, show a **compressed plan** warning.
 3. Baseline max test (`/test`, type `max_test`, week_index 0):
    - Warm-up, 1 strict max set.
@@ -108,7 +109,7 @@ Public URL = `/app` + path. In code, paths have **no** `/app` prefix.
 ### 2.3 Schedule: `/schedule`
 
 - 12-week (or compressed) grid.
-- Move uses only `legalMoveDays`. Never break the 3-day pull gap, never put two sessions on one date, never let the last weekly-pull fall inside 3 days of PR day, never move a `pr_attempt`.
+- Move uses only `legalMoveDays`. Never break the 3-day pull gap, never put two sessions on one date, never let the last weekly-pull fall inside 3 days of PR day, never move a `pr_attempt`, never create a 4th rest day in the week or a 4-day rest run.
 - Change PR date regenerates **future, non-done** sessions; keep completed ones.
 - ICS export is T17.
 
@@ -128,7 +129,7 @@ idle → warmup(step i) → set ⇄ rest → … → summary
 
 ### 2.5 Cross day (`type = cross`)
 
-Circuit from `TRAIN_CONFIG.CROSS_EXERCISES` filtered by equipment (`ring-dip` needs rings). 3 rounds, 2 in taper. Rest 60 s. Optional companion "Record for points" links are outbound only.
+Circuit from `TRAIN_CONFIG.CROSS_EXERCISES` filtered by equipment (`ring-dip` needs rings). 3 rounds, **2 in taper (low intensity — the days stay on the calendar)**. Rest 60 s. Optional companion "Record for points" links are outbound only. At least two cross days every week, including taper.
 
 ### 2.6 Max test (week 6) and PR (end of week 12)
 
@@ -140,7 +141,7 @@ Same protocol as baseline. After week 6, `retarget()`; if changed, regenerate re
 
 ### 2.8 Taper
 
-`generatePlan` writes weeks 11–12 at 70% and 45% of peak volume. Dashboard banner. Hide any "add a set" control. Engine never adds sets in week 12 P3 (`WEEK_12_P3_SETS = 0`).
+`generatePlan` writes weeks 11–12 at 70% and 45% of peak volume. Dashboard banner. Hide any "add a set" control. Engine never adds sets in week 12 P3 (`WEEK_12_P3_SETS = 0`). **Cross days stay on the calendar** at `CROSS_ROUNDS_TAPER` (2 rounds); they are not converted to rest. William's rest cap still applies through the taper.
 
 ---
 
@@ -172,7 +173,19 @@ Modules: `ladder.ts`, `schedule.ts`, `prescribe.ts`, `plan.ts`, `progress.ts`, `
 
 `validatePullDays`: exactly 2 distinct weekdays `0..6`. Both circular distances ≥ 3. Valid pairs are the 3+4 splits of the week: `[0,3],[1,4],[2,5],[3,6],[4,0],[5,1],[6,2]`. Error text must match `/72/`. `[6,1]` (Sat–Mon) is **illegal**.
 
-`placeCrossDays([1,4], 2) === [2, 5]`. Preferred candidates skip the day before a pull day. Tie-break: largest minimum circular gap, then lex-smallest sorted array.
+`placeCrossDays([1,4], 2) === [2, 5]`. Preferred candidates skip the day before a pull day. Combinations that violate William's rest cap are discarded. Tie-break: largest minimum circular gap, then lex-smallest sorted array.
+
+Worked layout (Mon/Thu pulls): Mon pull, Tue cross, Wed rest, Thu pull, Fri cross, Sat rest, Sun rest. Rest days = 3 (`maxRestDaysPerWeek`). Longest rest run = Sat–Sun = 2 (`maxConsecutiveRestDays`). `n` is clamped to `[CROSS_DAYS_MIN, CROSS_DAYS_MAX]` so a caller cannot schedule 4 rest days.
+
+### 4.1.1 William's rest cap (not a book number)
+
+| Constant | Value | Meaning |
+| --- | --- | --- |
+| `MAX_REST_DAYS_PER_WEEK` / `maxRestDaysPerWeek` | 3 | ≥4 training days per Mon–Sun week: 2 pull + ≥2 cross |
+| `MAX_CONSECUTIVE_REST_DAYS` / `maxConsecutiveRestDays` | 3 | No 4-day rest run, including across week boundaries and taper |
+| `CROSS_DAYS_MIN` | 2 | Floor that makes (a) possible |
+
+`generatePlan` and `legalMoveDays` both enforce these on the calendar (`YYYY-MM-DD` UTC), not on wall-clock hours. Helpers: `restDaysPerWeek`, `maxCircularConsecutiveRest`, `maxLinearConsecutiveRest`.
 
 ### 4.2 Block dates (worked)
 
@@ -200,7 +213,7 @@ Week 12: zero P3 sets. Volume ≤ 0.5 × week-10 session with the same inputs.
 
 ### 4.4 Plan
 
-Each kept week: two weekly-pull slots on `pullDays` (earlier weekday = slot 0). Week 6 slot 1 is `max_test`. Cross from `placeCrossDays`. `pr_attempt` extra on `prDate`. Last weekly-pull ≥ 3 days before PR. Deterministic.
+Each kept week: two weekly-pull slots on `pullDays` (earlier weekday = slot 0). Week 6 slot 1 is `max_test`. Cross from `placeCrossDays` (≥2 days, including taper at low intensity). `pr_attempt` extra on `prDate`. Last weekly-pull ≥ 3 days before PR. Every week ≤3 rest days; no 4-day rest run on `[startDate, prDate]`. Deterministic.
 
 `weekMultiplier` uncompressed: week 1 = 1.0; weeks 2–10 = `1.075^(w-1)`; week 11 = peak × 0.7; week 12 = peak × 0.45. Compressed: first remaining build week (indices ≤ 10) is 1.0, then compound; taper still uses that peak.
 

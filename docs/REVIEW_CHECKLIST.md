@@ -26,6 +26,11 @@ without a documented reason.
 - [ ] Compressed plans renormalize multipliers (first remaining build week = 1.0).
 - [ ] Rest UI (T14) has **no skip**. `+30 s` disables after 2 uses.
 - [ ] Warm-up gates Phase 1.
+- [ ] William's rest cap: `MAX_REST_DAYS_PER_WEEK === 3` and `MAX_CONSECUTIVE_REST_DAYS === 3` (also exported as `maxRestDaysPerWeek` / `maxConsecutiveRestDays`). Not a book number — do not "fix" them from RESEARCH citations.
+- [ ] `CROSS_DAYS_MIN === 2`. A week is 2 pull + ≥2 cross. `placeCrossDays(..., 1)` still places 2.
+- [ ] Mon/Thu + 2 cross days is the Tue/Fri layout (rest Wed/Sat/Sun): 3 rest days, no 4-day gap.
+- [ ] Taper weeks still have ≥2 cross sessions with `plan.taper === true`. Cross days are not deleted to make rest.
+- [ ] `generatePlan` / `legalMoveDays` enforce rest limits linearly across week boundaries, not only inside one week.
 
 ## App / Next.js
 

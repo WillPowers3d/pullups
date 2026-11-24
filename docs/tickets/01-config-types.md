@@ -21,4 +21,7 @@ npm run typecheck
 
 - `TRAIN_CONFIG.TAPER_VOLUME` equals `[0.7, 0.45]`.
 - `TRAIN_CONFIG.REST_SEC.p1 === 180`.
+- `TRAIN_CONFIG.CROSS_DAYS_MIN === 2`.
+- `TRAIN_CONFIG.MAX_REST_DAYS_PER_WEEK === TRAIN_CONFIG.maxRestDaysPerWeek === 3`.
+- `TRAIN_CONFIG.MAX_CONSECUTIVE_REST_DAYS === TRAIN_CONFIG.maxConsecutiveRestDays === 3`.
 - `tsc --noEmit` passes.

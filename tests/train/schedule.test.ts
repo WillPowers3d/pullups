@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
+import { TRAIN_CONFIG } from "@/lib/train/config";
 import {
   blockDates,
   legalMoveDays,
+  maxCircularConsecutiveRest,
+  maxLinearConsecutiveRest,
   placeCrossDays,
+  restDaysPerWeek,
   validatePullDays,
 } from "@/lib/train/engine/schedule";
 import type { Plan, PlannedSession } from "@/lib/train/engine/types";
+import { addDays } from "@/lib/dates";
 
 // T03: remove `.skip` when implementing this ticket.
 describe.skip("T03 pull-day validation and cross-day placement", () => {
@@ -28,18 +33,69 @@ describe.skip("T03 pull-day validation and cross-day placement", () => {
     if (!weekend.ok) expect(weekend.error).toMatch(/72/);
   });
 
-  it("placeCrossDays([1,4], 2) is Tue+Fri — documented tie-break", () => {
+  it("placeCrossDays([1,4], 2) is Tue+Fri — documented tie-break and rest cap", () => {
     // Preferred candidates: 2,5,6 (0 and 3 are the day before a pull day).
     // Combinations of 2: [2,5] min-gap 3, [2,6] min-gap 3, [5,6] min-gap 1.
     // Tie on min-gap 3 → lexicographically smaller [2,5].
-    expect(placeCrossDays([1, 4], 2)).toEqual([2, 5]);
+    // Layout: Mon pull, Tue cross, Wed rest, Thu pull, Fri cross, Sat rest, Sun rest.
+    const cross = placeCrossDays([1, 4], 2);
+    expect(cross).toEqual([2, 5]);
+    const training = [1, 4, ...cross];
+    expect(restDaysPerWeek(training)).toBe(TRAIN_CONFIG.MAX_REST_DAYS_PER_WEEK);
+    expect(maxCircularConsecutiveRest(training)).toBe(2);
+    expect(maxCircularConsecutiveRest(training)).toBeLessThanOrEqual(
+      TRAIN_CONFIG.MAX_CONSECUTIVE_REST_DAYS,
+    );
   });
 
-  it("placeCrossDays([1,4], 3) has length 3 and contains no pull days", () => {
+  it("placeCrossDays([1,4], 3) has length 3, no pull days, and ≤3 rest days", () => {
     const days = placeCrossDays([1, 4], 3);
     expect(days).toHaveLength(3);
     expect(days).not.toContain(1);
     expect(days).not.toContain(4);
+    const training = [1, 4, ...days];
+    expect(restDaysPerWeek(training)).toBeLessThanOrEqual(TRAIN_CONFIG.MAX_REST_DAYS_PER_WEEK);
+    expect(maxCircularConsecutiveRest(training)).toBeLessThanOrEqual(
+      TRAIN_CONFIG.MAX_CONSECUTIVE_REST_DAYS,
+    );
+  });
+
+  it("clamps n up to CROSS_DAYS_MIN so a week cannot have 4 rest days", () => {
+    const days = placeCrossDays([1, 4], 1);
+    expect(days).toHaveLength(TRAIN_CONFIG.CROSS_DAYS_MIN);
+    expect(restDaysPerWeek([1, 4, ...days])).toBeLessThanOrEqual(
+      TRAIN_CONFIG.MAX_REST_DAYS_PER_WEEK,
+    );
+  });
+
+  it("counts circular consecutive rest for the Mon/Thu + Tue/Fri layout", () => {
+    // Rest weekdays: Wed=3, Sat=6, Sun=0. Wrapping Sat–Sun = 2, isolated Wed = 1.
+    expect(restDaysPerWeek([1, 2, 4, 5])).toBe(3);
+    expect(maxCircularConsecutiveRest([1, 2, 4, 5])).toBe(2);
+  });
+
+  it("maxLinearConsecutiveRest spans week boundaries (William's 3-day cap)", () => {
+    // Week 1: Mon 11-30 pull, Tue 12-01 cross, Thu 12-03 pull, Fri 12-04 cross
+    // Week 2: same pattern starting Mon 12-07. Rest Sat 12-05 + Sun 12-06 = 2.
+    const training = [
+      "2026-11-30",
+      "2026-12-01",
+      "2026-12-03",
+      "2026-12-04",
+      "2026-12-07",
+      "2026-12-08",
+      "2026-12-10",
+      "2026-12-11",
+    ];
+    expect(
+      maxLinearConsecutiveRest(training, "2026-11-30", "2026-12-13"),
+    ).toBe(2);
+
+    // Four open days (Dec 1–4) is over the cap — this layout is illegal.
+    expect(
+      maxLinearConsecutiveRest(["2026-11-30", "2026-12-05"], "2026-11-30", "2026-12-05"),
+    ).toBe(4);
+    expect(addDays("2026-11-30", 4)).toBe("2026-12-04");
   });
 });
 
@@ -74,7 +130,9 @@ describe.skip("T04 block dates and legal moves", () => {
       weeks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
       sessions: [
         dummyPull("s1", "2026-11-30", 1, 0),
+        dummyCross("c1", "2026-12-01", 1),
         dummyPull("s2", "2026-12-03", 1, 1),
+        dummyCross("c2", "2026-12-04", 1),
       ],
     };
     const legal = legalMoveDays(plan.sessions[0], plan);
@@ -114,5 +172,15 @@ function dummyPull(
     type: "pull",
     slot,
     plan: { type: "pull", warmup: [], sets: [], volumeScore: 0, taper: false },
+  };
+}
+
+function dummyCross(_id: string, date: string, weekIndex: number): PlannedSession {
+  return {
+    weekIndex,
+    date,
+    type: "cross",
+    slot: 0,
+    plan: { type: "cross", warmup: [], sets: [], volumeScore: 0, taper: false },
   };
 }

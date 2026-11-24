@@ -3,7 +3,7 @@ import { generatePlan, weekMultiplier } from "@/lib/train/engine/plan";
 import { isWeeklyPullSlot } from "@/lib/train/engine/schedule";
 import { TRAIN_CONFIG } from "@/lib/train/config";
 import { FULL_EQUIPMENT } from "./helpers";
-import { diffDays } from "@/lib/dates";
+import { addDays, diffDays } from "@/lib/dates";
 import type { GeneratePlanInput } from "@/lib/train/engine/types";
 
 const INPUT: GeneratePlanInput = {
@@ -95,15 +95,59 @@ describe.skip("T08 plan generation", () => {
     expect(byWeek(12)).toBeLessThan(byWeek(10) * 0.6);
   });
 
-  it("schedules 2 cross sessions per week, never on a pull day", () => {
+  it("schedules ≥2 cross sessions per week, never on a pull day", () => {
     const plan = generatePlan(INPUT);
     for (const week of plan.weeks) {
       const cross = plan.sessions.filter((s) => s.weekIndex === week && s.type === "cross");
       const pullDates = new Set(
         plan.sessions.filter((s) => s.weekIndex === week && isWeeklyPullSlot(s)).map((s) => s.date),
       );
-      expect(cross).toHaveLength(2);
+      expect(cross.length).toBeGreaterThanOrEqual(TRAIN_CONFIG.CROSS_DAYS_MIN);
       expect(cross.every((s) => !pullDates.has(s.date))).toBe(true);
+    }
+  });
+
+  it("keeps at most 3 rest days in every Mon–Sun week (William: maxRestDaysPerWeek)", () => {
+    const plan = generatePlan(INPUT);
+    const training = new Set(plan.sessions.map((s) => s.date));
+    for (let offset = 0; offset < plan.weeks.length; offset++) {
+      const monday = addDays(plan.startDate, offset * 7);
+      let rest = 0;
+      for (let i = 0; i < 7; i++) {
+        const day = addDays(monday, i);
+        if (day > plan.prDate) break;
+        if (!training.has(day)) rest += 1;
+      }
+      expect(rest, `rest days in week starting ${monday}`).toBeLessThanOrEqual(
+        TRAIN_CONFIG.MAX_REST_DAYS_PER_WEEK,
+      );
+    }
+  });
+
+  it("never runs 4 consecutive rest days from startDate through prDate, including taper", () => {
+    const plan = generatePlan(INPUT);
+    const training = new Set(plan.sessions.map((s) => s.date));
+    let run = 0;
+    let maxRun = 0;
+    for (let day = plan.startDate; day <= plan.prDate; day = addDays(day, 1)) {
+      if (training.has(day)) {
+        run = 0;
+      } else {
+        run += 1;
+        maxRun = Math.max(maxRun, run);
+      }
+    }
+    expect(maxRun).toBeLessThanOrEqual(TRAIN_CONFIG.MAX_CONSECUTIVE_REST_DAYS);
+  });
+
+  it("taper weeks keep cross days at low intensity instead of converting them to rest", () => {
+    const plan = generatePlan(INPUT);
+    for (const week of [11, 12]) {
+      const cross = plan.sessions.filter((s) => s.weekIndex === week && s.type === "cross");
+      expect(cross.length, `week ${week} cross days`).toBeGreaterThanOrEqual(
+        TRAIN_CONFIG.CROSS_DAYS_MIN,
+      );
+      expect(cross.every((s) => s.plan.taper)).toBe(true);
     }
   });
 

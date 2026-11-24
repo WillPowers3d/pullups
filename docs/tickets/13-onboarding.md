@@ -10,7 +10,7 @@ Depends on T12.
 
 ## Behavior
 
-1. `/start`: explain 12 principles (link `/principles`). Form: equipment, body kg, two pull weekdays, cross-days 1–3, PR date. Client-validate pull days with `validatePullDays` (this function is pure — OK to import from engine in a client component). Show compressed warning if PR is under 12 weeks out.
+1. `/start`: explain 12 principles (link `/principles`). Form: equipment, body kg, two pull weekdays, cross-days 2–3 (default 2; 1 is illegal under William's rest cap), PR date. Client-validate pull days with `validatePullDays` (this function is pure — OK to import from engine in a client component). Show compressed warning if PR is under 12 weeks out.
 2. Submit profile via `PUT /api/train/profile`. Navigate to `/test`.
 3. `/test`: log a strict max (default 0). Submit `POST /api/train/blocks` with `{prDate, maxReps}`. Redirect to `/`.
 4. If `availableLadder` is empty, disable submit and say they need a bar.

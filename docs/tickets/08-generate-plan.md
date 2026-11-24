@@ -22,12 +22,17 @@ Depends on T03, T04, T06, T07.
 4. Two weekly-pull slots on `input.pullDays` (sorted; slot 0 = earlier weekday). Date = that week's Monday + offset (`weekday===0` is Sunday = Monday+6).
 5. If `weekIndex === 6` and slot 1: `type max_test`, plan = `prescribeMaxTest(ladder)`.
 6. Else pull: `prescribePullSession({ maxReps, ladder, weekIndex, volumeMultiplier: weekMultiplier(weekIndex, weeks), bodyKg, })`.
-7. Cross: `placeCrossDays(pullDays, crossDaysPerWeek)` → dates that week, `prescribeCross(crossExercises, weekIndex >= 11)`.
+7. Cross: `n = max(CROSS_DAYS_MIN, input.crossDaysPerWeek)`, `placeCrossDays(pullDays, n)` → dates that week, `prescribeCross(crossExercises, weekIndex >= 11)`. **Taper keeps these cross days at low intensity** (`taper: true`, 2 rounds) — do not convert them to rest.
 8. Append `pr_attempt` on `prDate` (weekIndex 12 or last kept week if 12 is kept — tests expect week 12 / date 2027-02-21). Plan = `prescribeMaxTest`.
-9. If last **weekly-pull** is `< LAST_PULL_BEFORE_PR_DAYS` before prDate, shift that session earlier in its week to a legal weekday; if impossible, drop it (tests with Mon/Thu and Sunday PR already satisfy Thursday→Sunday = 3).
-10. Same input → `toEqual` the same object. No `Date.now`, no `Math.random`.
+9. If last **weekly-pull** is `< LAST_PULL_BEFORE_PR_DAYS` before prDate, shift that session earlier in its week to a legal weekday. Do **not** drop it if that would leave 4+ rest days in the week or a 4-day rest run; move a cross day instead.
+10. After placing everything, William's rest cap must hold on `[startDate, prDate]`:
+    - each Mon–Sun week has ≤ `MAX_REST_DAYS_PER_WEEK` (3) rest days
+    - `maxLinearConsecutiveRest` ≤ `MAX_CONSECUTIVE_REST_DAYS` (3), including taper weeks
+11. Same input → `toEqual` the same object. No `Date.now`, no `Math.random`.
 
 Input for tests: today `2026-11-23`, PR `2027-02-21`, max 8, pullDays `[1,4]`, 2 cross days.
+
+Worked rest layout (Mon/Thu pulls): each build week is Mon pull, Tue cross, Wed rest, Thu pull, Fri cross, Sat rest, Sun rest. Rest = 3/week. Longest rest run across Sat–Sun into next Monday pull = 2. Taper weeks 11–12 still have those two cross days (`plan.taper === true`).
 
 ## Verify
 

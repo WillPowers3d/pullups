@@ -21,8 +21,8 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 3,
     name: "Focused Cross-Training",
-    summary: "Non-pull days do push, core, scapular, grip, and legs — not extra pulling.",
-    why: "Concurrent running interferes with strength more than cycling (Wilson 2012). Cross days never sit on a pull day and avoid the day before one when possible.",
+    summary: "Non-pull days do push, core, scapular, grip, and legs — not extra pulling. At least two of these days every week, including the taper.",
+    why: "Concurrent running interferes with strength more than cycling (Wilson 2012). William's rest cap (not a book number): at most 3 rest days per week and no 4-day rest run.",
   },
   {
     n: 4,

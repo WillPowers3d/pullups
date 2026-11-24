@@ -9,6 +9,9 @@ export {
 } from "@/lib/train/engine/ladder";
 export {
   validatePullDays,
+  restDaysPerWeek,
+  maxCircularConsecutiveRest,
+  maxLinearConsecutiveRest,
   placeCrossDays,
   blockDates,
   legalMoveDays,

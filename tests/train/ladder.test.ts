@@ -10,7 +10,7 @@ import { TRAIN_CONFIG } from "@/lib/train/config";
 import { FULL_EQUIPMENT, FULL_LADDER, NO_BANDS_NO_WEIGHT, NO_BAR } from "./helpers";
 
 // T02: remove `.skip` when implementing this ticket.
-describe.skip("T02 ladder", () => {
+describe("T02 ladder", () => {
   it("ranks weighted > chest-to-bar > strict > band-light", () => {
     expect(difficultyRank("weighted")).toBeGreaterThan(difficultyRank("chest-to-bar"));
     expect(difficultyRank("chest-to-bar")).toBeGreaterThan(difficultyRank("strict"));

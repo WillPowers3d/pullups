@@ -104,7 +104,7 @@ describe("T03 pull-day validation and cross-day placement", () => {
 });
 
 // T04: remove `.skip` when implementing this ticket.
-describe.skip("T04 block dates and legal moves", () => {
+describe("T04 block dates and legal moves", () => {
   it("aligns a 12-week block so PR Sunday is the last day of week 12", () => {
     const result = blockDates("2026-11-23", "2027-02-21");
     expect(result.startDate).toBe("2026-11-30");

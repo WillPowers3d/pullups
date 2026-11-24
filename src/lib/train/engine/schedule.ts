@@ -1,6 +1,10 @@
 import { TRAIN_CONFIG } from "@/lib/train/config";
-import { addDays, diffDays } from "@/lib/dates";
-import { notImplemented } from "@/lib/train/engine/not-implemented";
+import {
+  addDays,
+  diffDays,
+  nextMondayAfter,
+  startOfWeekMonday,
+} from "@/lib/dates";
 import type {
   BlockDates,
   Plan,
@@ -284,22 +288,148 @@ function findLongestRestRun(restSet: Set<number>): number[] {
   return best;
 }
 
-// ── T04 stubs (keep throwing) ──────────────────────────────────────────────
+// ── T04 exports ─────────────────────────────────────────────────────────────
 
 /**
- * Lay out which training-week indices fit between `today` and `prDate`.
- * Throws until T04.
+ * Determine the block start date and which training-week indices survive.
+ *
+ * Uncompressed: `startDate = Monday(prDate) − 77 days`. If that Monday is
+ * after `today`, the full 12-week block fits.
+ *
+ * Compressed: `startDate = nextMondayAfter(today)`. Pick the `n` highest-
+ * priority weeks from `[12,11,6,10,9,8,7,5,4,3,2,1]` where
+ * `n = diffDays(startDate, Monday(prDate)) / 7 + 1`.
+ *
+ * Throws when `prDate` is in the past.
  */
-export function blockDates(_today: string, _prDate: string): BlockDates {
-  return notImplemented("blockDates");
+export function blockDates(today: string, prDate: string): BlockDates {
+  if (prDate < today) {
+    throw new Error("PR date must be after today");
+  }
+
+  const prMonday = startOfWeekMonday(prDate);
+  const uncompressedStart = addDays(prMonday, -77);
+
+  if (uncompressedStart > today) {
+    return {
+      startDate: uncompressedStart,
+      compressed: false,
+      weeks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    };
+  }
+
+  const startDate = nextMondayAfter(today);
+  const lastMonday = prMonday;
+  const n = diffDays(startDate, lastMonday) / 7 + 1;
+
+  const priority = [
+    12, 11, 6, 10, 9, 8, 7, 5, 4, 3, 2, 1,
+  ];
+  const weeks = priority.slice(0, n).sort((a, b) => a - b);
+
+  return {
+    startDate,
+    compressed: true,
+    weeks,
+  };
 }
 
 /**
  * Dates in the same Mon–Sun week as `session.date` where moving `session`
- * would still satisfy all constraints. Throws until T04.
+ * would still satisfy all constraints.
+ *
+ * Rules:
+ * - `pr_attempt` sessions cannot be moved.
+ * - No two sessions share a date after the move.
+ * - Weekly-pull slots maintain ≥ 3 calendar days between consecutive pulls
+ *   across the whole plan.
+ * - The last weekly pull stays ≥ 3 days before `prDate`.
+ * - No cross session lands on a pull session date.
+ * - William's consecutive-rest cap still holds
+ *   (`maxLinearConsecutiveRest` on `[startDate, prDate]` ≤ `MAX_CONSECUTIVE_REST_DAYS`).
  */
-export function legalMoveDays(_session: PlannedSession, _plan: Plan): string[] {
-  return notImplemented("legalMoveDays");
+export function legalMoveDays(session: PlannedSession, plan: Plan): string[] {
+  if (session.type === "pr_attempt") {
+    return [];
+  }
+
+  const weekStart = startOfWeekMonday(session.date);
+  const weekEnd = addDays(weekStart, 6);
+
+  const candidates: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(weekStart, i);
+    if (d !== session.date) {
+      candidates.push(d);
+    }
+  }
+
+  const legal: string[] = [];
+  for (const candidate of candidates) {
+    if (candidate < weekStart || candidate > weekEnd) continue;
+    if (isLegalMove(session, candidate, plan)) {
+      legal.push(candidate);
+    }
+  }
+
+  return legal;
+}
+
+/** Check whether moving `session` to `candidateDate` is legal. */
+function isLegalMove(
+  session: PlannedSession,
+  candidateDate: string,
+  plan: Plan,
+): boolean {
+  // 1. No date collision with another session
+  const collision = plan.sessions.find(
+    (s) => s.date === candidateDate && s !== session,
+  );
+  if (collision) return false;
+
+  // 2. Simulate the move
+  const simulated = plan.sessions.map((s) =>
+    s === session ? { ...s, date: candidateDate } : s,
+  );
+
+  // 3. Weekly-pull gap ≥ 3 days across the whole plan
+  const pullSessions = simulated.filter(isWeeklyPullSlot);
+  const pullDates = pullSessions.map((s) => s.date).sort();
+  for (let i = 1; i < pullDates.length; i++) {
+    if (
+      diffDays(pullDates[i - 1], pullDates[i]) <
+      TRAIN_CONFIG.MIN_DAYS_BETWEEN_PULL_DAYS
+    ) {
+      return false;
+    }
+  }
+
+  // 4. Last weekly pull ≥ 3 days before prDate
+  if (pullDates.length > 0) {
+    const lastPull = pullDates[pullDates.length - 1];
+    if (
+      diffDays(lastPull, plan.prDate) <
+      TRAIN_CONFIG.LAST_PULL_BEFORE_PR_DAYS
+    ) {
+      return false;
+    }
+  }
+
+  // 5. Cross session does not land on a pull date (covered by collision
+  //    check above, but stated explicitly for clarity)
+
+  // 6. William's consecutive-rest cap
+  const trainingDates = simulated.map((s) => s.date);
+  const maxRest = maxLinearConsecutiveRest(
+    trainingDates,
+    plan.startDate,
+    plan.prDate,
+  );
+  if (maxRest > TRAIN_CONFIG.MAX_CONSECUTIVE_REST_DAYS) {
+    return false;
+  }
+
+  return true;
 }
 
 /** Weekly pull slots: type pull, or the week-6 max_test. Not pr_attempt. */

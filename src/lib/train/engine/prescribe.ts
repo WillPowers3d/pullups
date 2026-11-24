@@ -3,6 +3,7 @@ import { variationFactor, difficultyRank } from "@/lib/train/engine/ladder";
 import { notImplemented } from "@/lib/train/engine/not-implemented";
 import type {
   Equipment,
+  ExerciseName,
   PrescribedSet,
   PrescribePullInput,
   SessionPlan,
@@ -114,8 +115,38 @@ export function prescribePullSession(_input: PrescribePullInput): SessionPlan {
  * steps if you have them, or a short general warmup — ticket T7 specifies
  * 3 rounds and every exercise is non-pull.
  */
-export function prescribeCross(_exercises: string[], _taper: boolean): SessionPlan {
-  return notImplemented("prescribeCross");
+export function prescribeCross(exercises: string[], taper: boolean): SessionPlan {
+  const { CROSS_ROUNDS, CROSS_ROUNDS_TAPER, CROSS_REST_SEC, DEFAULT_RIR_FLOOR } = TRAIN_CONFIG;
+  const rounds = taper ? CROSS_ROUNDS_TAPER : CROSS_ROUNDS;
+
+  const sets: PrescribedSet[] = [];
+  for (let r = 0; r < rounds; r++) {
+    for (const exercise of exercises) {
+      sets.push({
+        phase: "p2",
+        variation: exercise as ExerciseName,
+        targetReps: 10,
+        restSec: CROSS_REST_SEC,
+        rirFloor: DEFAULT_RIR_FLOOR,
+        addedKg: 0,
+      });
+    }
+  }
+
+  const warmup: WarmupStep[] = [
+    { id: "general", label: "General", kind: "timer", seconds: TRAIN_CONFIG.WARMUP_GENERAL_SEC },
+    { id: "mobility", label: "Mobility", kind: "reps", reps: TRAIN_CONFIG.WARMUP_MOBILITY_REPS },
+    { id: "activation", label: "Activation", kind: "hang", seconds: TRAIN_CONFIG.WARMUP_HANG_SEC, sets: TRAIN_CONFIG.WARMUP_ACTIVATION_SETS },
+    { id: "ramp", label: "Ramp", kind: "reps", rampReps: [1] },
+  ];
+
+  return {
+    type: "cross",
+    warmup,
+    sets,
+    volumeScore: 0,
+    taper,
+  };
 }
 
 /**
@@ -123,14 +154,60 @@ export function prescribeCross(_exercises: string[], _taper: boolean): SessionPl
  * If the ladder includes chest-to-bar or weighted, append one optional single
  * (targetReps 1) of the hardest of those. Tests only assert sets[0].
  */
-export function prescribeMaxTest(_ladder: Variation[]): SessionPlan {
-  return notImplemented("prescribeMaxTest");
+export function prescribeMaxTest(ladder: Variation[]): SessionPlan {
+  const { REST_SEC, DEFAULT_RIR_FLOOR } = TRAIN_CONFIG;
+
+  const warmup = buildWarmup({
+    phase: "p1",
+    variation: "strict",
+    targetReps: 5,
+    restSec: REST_SEC.p1,
+    addedKg: 0,
+    rirFloor: DEFAULT_RIR_FLOOR,
+  });
+
+  const sets: PrescribedSet[] = [
+    {
+      phase: "test",
+      variation: "strict",
+      targetReps: 0,
+      restSec: REST_SEC.test,
+      addedKg: 0,
+      rirFloor: 0,
+    },
+  ];
+
+  const ladderSet = new Set(ladder);
+  if (ladderSet.has("weighted") || ladderSet.has("chest-to-bar")) {
+    const hardest: Variation = ladderSet.has("weighted") ? "weighted" : "chest-to-bar";
+    sets.push({
+      phase: "test",
+      variation: hardest,
+      targetReps: 1,
+      restSec: REST_SEC.test,
+      addedKg: 0,
+      rirFloor: 0,
+    });
+  }
+
+  return {
+    type: "max_test",
+    warmup,
+    sets,
+    volumeScore: 0,
+    taper: false,
+  };
 }
 
 /**
  * Cross catalog filtered by equipment: drop `ring-dip` when !hasRings.
  * Pull-up variations never appear here.
  */
-export function filterCrossExercises(_equipment: Equipment): string[] {
-  return notImplemented("filterCrossExercises");
+export function filterCrossExercises(equipment: Equipment): string[] {
+  const pullVariations = new Set(TRAIN_CONFIG.LADDER_ORDER);
+  return TRAIN_CONFIG.CROSS_EXERCISES.filter((ex) => {
+    if (pullVariations.has(ex as Variation)) return false;
+    if (ex === "ring-dip" && !equipment.hasRings) return false;
+    return true;
+  });
 }

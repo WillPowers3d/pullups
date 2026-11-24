@@ -52,7 +52,7 @@ const PLAN: Plan = {
 };
 
 // T11: remove `.skip` when implementing this ticket.
-describe.skip("T11 repository", () => {
+describe("T11 repository", () => {
   afterEach(() => {
     resetDbForTests();
     delete process.env.DB_PATH;

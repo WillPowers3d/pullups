@@ -15,7 +15,7 @@ const EMPTY: TrainStats = {
 };
 
 // T16: remove `.skip` when implementing this ticket.
-describe.skip("T16 badge eligibility", () => {
+describe("T16 badge eligibility", () => {
   it("returns block_started when the block exists", () => {
     expect(trainBadges({ ...EMPTY, blockStarted: true })).toEqual(["block_started"]);
   });

@@ -29,15 +29,17 @@ export function weekMultiplier(_weekIndex: number, _keptWeeks?: readonly number[
  * - Each kept week has exactly 2 weekly-pull slots on pullDays (earlier
  *   weekday = slot 0). Week 6 slot 1 is type max_test.
  * - Cross days from placeCrossDays(pullDays, max(CROSS_DAYS_MIN, crossDaysPerWeek));
- *   none share a date with a pull slot. Taper weeks keep those cross days
- *   (prescribeCross(..., taper=true) — low intensity, not rest).
+ *   none share a date with a pull slot. Taper weeks keep those requested
+ *   cross days (prescribeCross(..., taper=true) — low intensity, not rest).
+ * - If maxLinearConsecutiveRest on [startDate, prDate] would exceed
+ *   MAX_CONSECUTIVE_REST_DAYS, insert extra cross days to break the run
+ *   (prefer not-day-before-pull, then the 4th rest day of the run).
  * - pr_attempt is an extra session on prDate (not one of the two weekly slots).
  * - Last weekly-pull date must be ≥ LAST_PULL_BEFORE_PR_DAYS before prDate;
  *   shift that slot if not. Do not drop a weekly-pull if that would create
- *   4+ rest days in the week or a 4-day rest run; move cross days instead.
- * - William's rest cap: every Mon–Sun week in [startDate, prDate] has
- *   ≤ MAX_REST_DAYS_PER_WEEK rest days, and maxLinearConsecutiveRest over
- *   that range is ≤ MAX_CONSECUTIVE_REST_DAYS.
+ *   a 4-day rest run; move or add a cross day instead.
+ * - William's rule (not a weekly cap): maxLinearConsecutiveRest over
+ *   [startDate, prDate] is ≤ MAX_CONSECUTIVE_REST_DAYS, including taper.
  * - Pull prescriptions use weekMultiplier(weekIndex, weeks).
  * - Same input → deep-equal output. No Date.now, no Math.random.
  */

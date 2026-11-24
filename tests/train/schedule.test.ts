@@ -33,7 +33,7 @@ describe.skip("T03 pull-day validation and cross-day placement", () => {
     if (!weekend.ok) expect(weekend.error).toMatch(/72/);
   });
 
-  it("placeCrossDays([1,4], 2) is Tue+Fri — documented tie-break and rest cap", () => {
+  it("placeCrossDays([1,4], 2) is Tue+Fri — documented tie-break", () => {
     // Preferred candidates: 2,5,6 (0 and 3 are the day before a pull day).
     // Combinations of 2: [2,5] min-gap 3, [2,6] min-gap 3, [5,6] min-gap 1.
     // Tie on min-gap 3 → lexicographically smaller [2,5].
@@ -41,30 +41,34 @@ describe.skip("T03 pull-day validation and cross-day placement", () => {
     const cross = placeCrossDays([1, 4], 2);
     expect(cross).toEqual([2, 5]);
     const training = [1, 4, ...cross];
-    expect(restDaysPerWeek(training)).toBe(TRAIN_CONFIG.MAX_REST_DAYS_PER_WEEK);
     expect(maxCircularConsecutiveRest(training)).toBe(2);
     expect(maxCircularConsecutiveRest(training)).toBeLessThanOrEqual(
       TRAIN_CONFIG.MAX_CONSECUTIVE_REST_DAYS,
     );
   });
 
-  it("placeCrossDays([1,4], 3) has length 3, no pull days, and ≤3 rest days", () => {
+  it("placeCrossDays([1,4], 3) has length 3, no pull days, and consecutive rest ≤3", () => {
     const days = placeCrossDays([1, 4], 3);
     expect(days).toHaveLength(3);
     expect(days).not.toContain(1);
     expect(days).not.toContain(4);
     const training = [1, 4, ...days];
-    expect(restDaysPerWeek(training)).toBeLessThanOrEqual(TRAIN_CONFIG.MAX_REST_DAYS_PER_WEEK);
     expect(maxCircularConsecutiveRest(training)).toBeLessThanOrEqual(
       TRAIN_CONFIG.MAX_CONSECUTIVE_REST_DAYS,
     );
   });
 
-  it("clamps n up to CROSS_DAYS_MIN so a week cannot have 4 rest days", () => {
+  it("placeCrossDays([1,4], 1) is one day (Tue); 4 rest days in the week is legal", () => {
+    // Preferred singletons {2,5,6} tie on wrap-gap; lex-smallest is [2].
+    // Training Mon/Tue/Thu. Rest Wed + Fri–Sun (4 rest days). Longest run = 3.
     const days = placeCrossDays([1, 4], 1);
+    expect(days).toEqual([2]);
     expect(days).toHaveLength(TRAIN_CONFIG.CROSS_DAYS_MIN);
-    expect(restDaysPerWeek([1, 4, ...days])).toBeLessThanOrEqual(
-      TRAIN_CONFIG.MAX_REST_DAYS_PER_WEEK,
+    const training = [1, 4, ...days];
+    expect(restDaysPerWeek(training)).toBe(4);
+    expect(maxCircularConsecutiveRest(training)).toBe(3);
+    expect(maxCircularConsecutiveRest(training)).toBeLessThanOrEqual(
+      TRAIN_CONFIG.MAX_CONSECUTIVE_REST_DAYS,
     );
   });
 

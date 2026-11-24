@@ -69,7 +69,7 @@ Dev server: `npm run dev` then open **http://localhost:3000/app** (basePath is `
 - Sync `params` (`{ params: { id } }`) — this Next.js version needs `await params`.
 - Importing `better-sqlite3` from a client component.
 - Changing P3 set counts inside `progress()` (set counts belong to `prescribePullSession`).
-- Dropping taper cross days (they stay; intensity drops). Scheduling 1 cross day or 4 rest days.
+- Dropping requested taper cross days (they stay; intensity drops). Inventing a weekly rest-day cap, or leaving a 4-day rest run unfilled.
 - Implementing T02–T17 in one shot. Don't.
 
 ## Ticket map

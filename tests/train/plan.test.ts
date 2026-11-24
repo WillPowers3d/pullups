@@ -95,21 +95,22 @@ describe.skip("T08 plan generation", () => {
     expect(byWeek(12)).toBeLessThan(byWeek(10) * 0.6);
   });
 
-  it("schedules ≥2 cross sessions per week, never on a pull day", () => {
+  it("schedules requested cross sessions per week, never on a pull day", () => {
     const plan = generatePlan(INPUT);
     for (const week of plan.weeks) {
       const cross = plan.sessions.filter((s) => s.weekIndex === week && s.type === "cross");
       const pullDates = new Set(
         plan.sessions.filter((s) => s.weekIndex === week && isWeeklyPullSlot(s)).map((s) => s.date),
       );
-      expect(cross.length).toBeGreaterThanOrEqual(TRAIN_CONFIG.CROSS_DAYS_MIN);
+      expect(cross.length).toBeGreaterThanOrEqual(INPUT.crossDaysPerWeek);
       expect(cross.every((s) => !pullDates.has(s.date))).toBe(true);
     }
   });
 
-  it("keeps at most 3 rest days in every Mon–Sun week (William: maxRestDaysPerWeek)", () => {
-    const plan = generatePlan(INPUT);
+  it("allows 1 cross day and 4 rest days in a week when consecutive rest stays ≤3", () => {
+    const plan = generatePlan({ ...INPUT, crossDaysPerWeek: 1 });
     const training = new Set(plan.sessions.map((s) => s.date));
+    let sawFourRestDays = false;
     for (let offset = 0; offset < plan.weeks.length; offset++) {
       const monday = addDays(plan.startDate, offset * 7);
       let rest = 0;
@@ -118,10 +119,11 @@ describe.skip("T08 plan generation", () => {
         if (day > plan.prDate) break;
         if (!training.has(day)) rest += 1;
       }
-      expect(rest, `rest days in week starting ${monday}`).toBeLessThanOrEqual(
-        TRAIN_CONFIG.MAX_REST_DAYS_PER_WEEK,
-      );
+      if (rest === 4) sawFourRestDays = true;
     }
+    expect(sawFourRestDays).toBe(true);
+    const week1Cross = plan.sessions.filter((s) => s.weekIndex === 1 && s.type === "cross");
+    expect(week1Cross.length).toBeGreaterThanOrEqual(1);
   });
 
   it("never runs 4 consecutive rest days from startDate through prDate, including taper", () => {
@@ -145,7 +147,7 @@ describe.skip("T08 plan generation", () => {
     for (const week of [11, 12]) {
       const cross = plan.sessions.filter((s) => s.weekIndex === week && s.type === "cross");
       expect(cross.length, `week ${week} cross days`).toBeGreaterThanOrEqual(
-        TRAIN_CONFIG.CROSS_DAYS_MIN,
+        INPUT.crossDaysPerWeek,
       );
       expect(cross.every((s) => s.plan.taper)).toBe(true);
     }

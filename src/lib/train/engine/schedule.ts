@@ -49,25 +49,34 @@ export function maxLinearConsecutiveRest(
 
 /**
  * Pick `n` non-pull weekdays. Clamp `n` into
- * [CROSS_DAYS_MIN, CROSS_DAYS_MAX] so a week cannot have 4+ rest days.
+ * [CROSS_DAYS_MIN, CROSS_DAYS_MAX] (1–3). A week may have 4 rest days.
  *
  * Candidates = non-pull days that are NOT the day before a pull day.
  * If there are fewer than n candidates, add the excluded non-pull days
  * (the day-before-pull days) until n are available.
  *
- * Discard combinations that violate William's rest cap:
- * restDaysPerWeek(pull ∪ cross) > MAX_REST_DAYS_PER_WEEK, or
- * maxCircularConsecutiveRest(pull ∪ cross) > MAX_CONSECUTIVE_REST_DAYS.
- *
- * Among remaining n-combinations, choose the one with the largest minimum
+ * Among n-combinations of the pool, choose the one with the largest minimum
  * circular gap between chosen days. Ties → lexicographically smallest
- * sorted array. Return sorted ascending.
+ * sorted array.
+ *
+ * Then, while maxCircularConsecutiveRest(pull ∪ chosen) >
+ * MAX_CONSECUTIVE_REST_DAYS and unused non-pull days remain, add the
+ * fewest extra cross days to break the longest rest run (prefer
+ * not-day-before-pull, then lex-smallest weekday). Legal 3+4 pull pairs
+ * already have circular rest ≤ 3, so n=1 does not get extras.
+ *
+ * Return sorted ascending.
  *
  * Worked: placeCrossDays([1,4], 2) → [2,5]
  *   Preferred candidates are Tue/Fri/Sat (2,5,6). Sun and Wed are
  *   day-before-pull. [2,5] and [2,6] both have min gap 3; lex smaller is [2,5].
  *   Layout: Mon pull, Tue cross, Wed rest, Thu pull, Fri cross, Sat rest, Sun rest.
- *   Rest days = 3. Circular consecutive rest (Sat–Sun) = 2. No 4-day gap.
+ *   Circular consecutive rest (Sat–Sun) = 2.
+ *
+ * Worked: placeCrossDays([1,4], 1) → [2]
+ *   Singletons in the preferred pool all tie on wrap-gap; lex-smallest is Tue.
+ *   Training Mon/Tue/Thu. Rest Wed + Fri–Sun. Longest rest run = 3 (legal).
+ *   Four rest days in the week is allowed — there is no weekly rest cap.
  */
 export function placeCrossDays(_pullDays: number[], _n: number): number[] {
   return notImplemented("placeCrossDays");
@@ -100,9 +109,9 @@ export function blockDates(_today: string, _prDate: string): BlockDates {
  * Dates in the same Mon–Sun week as `session.date` where moving `session`
  * would still satisfy: 3-day pull gap, last weekly-pull ≥ 3 days before
  * prDate, no two sessions on one date, cross not on a pull day, and
- * William's rest cap (≤ MAX_REST_DAYS_PER_WEEK rest days in that week,
- * ≤ MAX_CONSECUTIVE_REST_DAYS consecutive rest across the whole plan).
- * A `pr_attempt` cannot move (return []).
+ * William's consecutive-rest cap (maxLinearConsecutiveRest on
+ * [plan.startDate, plan.prDate] ≤ MAX_CONSECUTIVE_REST_DAYS). A week
+ * may have 4 rest days. A `pr_attempt` cannot move (return []).
  */
 export function legalMoveDays(_session: PlannedSession, _plan: Plan): string[] {
   return notImplemented("legalMoveDays");

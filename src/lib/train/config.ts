@@ -14,18 +14,13 @@ export const TRAIN_CONFIG = {
   MIN_DAYS_BETWEEN_PULL_DAYS: 3,
   MIN_HOURS_BETWEEN_PULL_DAYS: 72,
   CROSS_DAYS_DEFAULT: 2,
-  /** Raised from 1: 2 pull + ≥2 cross = ≥4 training days (William's rest cap). */
-  CROSS_DAYS_MIN: 2,
+  /** Floor is 1. Extra cross days are added only to break a 4+ rest run. */
+  CROSS_DAYS_MIN: 1,
   CROSS_DAYS_MAX: 3,
-  /**
-   * William's rule (not a book number): at most this many rest days in any
-   * Mon–Sun week. Equivalent to ≥4 training days (2 pull + ≥2 cross).
-   */
-  MAX_REST_DAYS_PER_WEEK: 3,
-  maxRestDaysPerWeek: 3,
   /**
    * William's rule (not a book number): longest allowed run of consecutive
    * rest days, including across week boundaries and through the taper.
+   * There is no weekly rest-day cap.
    */
   MAX_CONSECUTIVE_REST_DAYS: 3,
   maxConsecutiveRestDays: 3,

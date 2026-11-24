@@ -21,8 +21,8 @@ export const PRINCIPLES: Principle[] = [
   {
     n: 3,
     name: "Focused Cross-Training",
-    summary: "Non-pull days do push, core, scapular, grip, and legs — not extra pulling. At least two of these days every week, including the taper.",
-    why: "Concurrent running interferes with strength more than cycling (Wilson 2012). William's rest cap (not a book number): at most 3 rest days per week and no 4-day rest run.",
+    summary: "Non-pull days do push, core, scapular, grip, and legs — not extra pulling. 1–3 of these days per week (default 2); extra days only to break a 4-day rest run.",
+    why: "Concurrent running interferes with strength more than cycling (Wilson 2012). William's rule (not a book number): no more than 3 rest days in a row, including across weeks and the taper.",
   },
   {
     n: 4,

@@ -6,7 +6,7 @@ import { notImplemented } from "@/lib/train/engine/not-implemented";
  * Until then these factories throw so unused-route stubs cannot silently accept junk.
  *
  * Expected shapes (see docs/DESIGN.md §5):
- * - profilePut: equipment + optional bodyKg, pullDays (2 weekdays), crossDaysPerWeek 2–3, displayName
+ * - profilePut: equipment + optional bodyKg, pullDays (2 weekdays), crossDaysPerWeek 1–3, displayName
  * - createBlock: { prDate: YYYY-MM-DD, maxReps: int ≥ 0 }
  * - patchBlock: { prDate: YYYY-MM-DD }
  * - logSet: { setId, actualReps ≥ 0, rir 0–4, quality 1–5, restTakenSec ≥ 0, verifiedFullReps? }

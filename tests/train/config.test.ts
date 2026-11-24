@@ -34,11 +34,14 @@ describe("T01 config", () => {
     ]);
   });
 
-  it("locks William's rest cap (not a book number)", () => {
-    expect(TRAIN_CONFIG.CROSS_DAYS_MIN).toBe(2);
-    expect(TRAIN_CONFIG.MAX_REST_DAYS_PER_WEEK).toBe(3);
-    expect(TRAIN_CONFIG.maxRestDaysPerWeek).toBe(3);
+  it("locks William's consecutive-rest cap (not a book number, no weekly cap)", () => {
+    expect(TRAIN_CONFIG.CROSS_DAYS_MIN).toBe(1);
+    expect(TRAIN_CONFIG.CROSS_DAYS_MAX).toBe(3);
+    expect(TRAIN_CONFIG.CROSS_DAYS_DEFAULT).toBe(2);
     expect(TRAIN_CONFIG.MAX_CONSECUTIVE_REST_DAYS).toBe(3);
     expect(TRAIN_CONFIG.maxConsecutiveRestDays).toBe(3);
+    expect(
+      "maxRestDaysPerWeek" in TRAIN_CONFIG || "MAX_REST_DAYS_PER_WEEK" in TRAIN_CONFIG,
+    ).toBe(false);
   });
 });

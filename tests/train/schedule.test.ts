@@ -13,7 +13,7 @@ import type { Plan, PlannedSession } from "@/lib/train/engine/types";
 import { addDays } from "@/lib/dates";
 
 // T03: remove `.skip` when implementing this ticket.
-describe.skip("T03 pull-day validation and cross-day placement", () => {
+describe("T03 pull-day validation and cross-day placement", () => {
   it("accepts pairs 3–4 calendar days apart (Mon/Thu, Tue/Fri, Sun/Wed)", () => {
     expect(validatePullDays([1, 4]).ok).toBe(true);
     expect(validatePullDays([2, 5]).ok).toBe(true);

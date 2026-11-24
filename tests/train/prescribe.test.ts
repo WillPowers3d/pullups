@@ -13,7 +13,7 @@ import { FULL_EQUIPMENT, FULL_LADDER, set } from "./helpers";
 import type { PrescribedSet } from "@/lib/train/engine/types";
 
 // T05: remove `.skip` when implementing this ticket.
-describe.skip("T05 warm-up, ordering, volume score", () => {
+describe("T05 warm-up, ordering, volume score", () => {
   it("buildWarmup(strict × 6) has 4 named steps and ramp reps [2, 3]", () => {
     const steps = buildWarmup(
       set({ phase: "p1", variation: "strict", targetReps: 6, restSec: 180 }),

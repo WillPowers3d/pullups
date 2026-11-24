@@ -1,3 +1,5 @@
+import { TRAIN_CONFIG } from "@/lib/train/config";
+import { variationFactor, difficultyRank } from "@/lib/train/engine/ladder";
 import { notImplemented } from "@/lib/train/engine/not-implemented";
 import type {
   Equipment,
@@ -17,24 +19,51 @@ import type {
  * Worked: buildWarmup(strict × 6) → 4 steps, ramp reps [2, 3]
  *   round(6*0.3)=2, round(6*0.5)=3.
  */
-export function buildWarmup(_firstSet: PrescribedSet): WarmupStep[] {
-  return notImplemented("buildWarmup");
+export function buildWarmup(firstSet: PrescribedSet): WarmupStep[] {
+  const { WARMUP_GENERAL_SEC, WARMUP_MOBILITY_REPS, WARMUP_ACTIVATION_SETS, WARMUP_HANG_SEC, WARMUP_RAMP_PCTS, LADDER_ORDER } = TRAIN_CONFIG;
+
+  // If firstSet is weighted, use the next easier variation for the ramp label
+  const rampVariation: Variation = firstSet.variation === "weighted"
+    ? (LADDER_ORDER[LADDER_ORDER.indexOf("weighted") - 1] as Variation)
+    : (firstSet.variation as Variation);
+
+  return [
+    { id: "general", label: "General", kind: "timer", seconds: WARMUP_GENERAL_SEC },
+    { id: "mobility", label: "Mobility", kind: "reps", reps: WARMUP_MOBILITY_REPS },
+    { id: "activation", label: "Activation", kind: "hang", seconds: WARMUP_HANG_SEC, sets: WARMUP_ACTIVATION_SETS },
+    { id: "ramp", label: `Ramp (${rampVariation})`, kind: "reps", rampReps: WARMUP_RAMP_PCTS.map((pct) => Math.max(1, Math.round(firstSet.targetReps * pct))) },
+  ];
 }
 
 /**
  * Sort by phase order (p1, p2, p3, then test), then difficultyRank descending,
  * then targetReps ascending. Stable (original index as last key).
  */
-export function orderSets(_sets: PrescribedSet[]): PrescribedSet[] {
-  return notImplemented("orderSets");
+export function orderSets(sets: PrescribedSet[]): PrescribedSet[] {
+  const phaseOrder: Record<string, number> = { p1: 0, p2: 1, p3: 2, test: 3, warmup: 4 };
+
+  return sets
+    .map((s, i) => ({ set: s, idx: i }))
+    .sort((a, b) => {
+      const pa = phaseOrder[a.set.phase] ?? 9;
+      const pb = phaseOrder[b.set.phase] ?? 9;
+      if (pa !== pb) return pa - pb;
+      const ra = difficultyRank(a.set.variation as Variation);
+      const rb = difficultyRank(b.set.variation as Variation);
+      if (rb !== ra) return rb - ra;
+      if (a.set.targetReps !== b.set.targetReps) return a.set.targetReps - b.set.targetReps;
+      return a.idx - b.idx;
+    })
+    .map(({ set }) => set);
 }
 
 /**
  * Σ targetReps × variationFactor, then round the SUM to 1 decimal
  * (Math.round(sum * 10) / 10). Do not round per set.
  */
-export function volumeScore(_sets: PrescribedSet[], _bodyKg?: number): number {
-  return notImplemented("volumeScore");
+export function volumeScore(sets: PrescribedSet[], bodyKg?: number): number {
+  const sum = sets.reduce((acc, s) => acc + s.targetReps * variationFactor(s.variation as Variation, s.addedKg, bodyKg), 0);
+  return Math.round(sum * 10) / 10;
 }
 
 /**

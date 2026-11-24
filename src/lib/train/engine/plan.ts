@@ -1,0 +1,40 @@
+import { notImplemented } from "@/lib/train/engine/not-implemented";
+import type { GeneratePlanInput, Plan } from "@/lib/train/engine/types";
+
+/**
+ * Volume multiplier for a week index.
+ *
+ * Uncompressed (keptWeeks omitted or 1..12):
+ *   week 1 → 1.0
+ *   weeks 2–10 → (1 + BUILD_WEEKLY_INCREASE)^(weekIndex - 1)
+ *   week 11 → week10 * TAPER_VOLUME[0]
+ *   week 12 → week10 * TAPER_VOLUME[1]
+ *
+ * Compressed: remaining build weeks (≤10) are renormalized so the first
+ * remaining build week is 1.0, then +BUILD_WEEKLY_INCREASE per remaining
+ * build week. Taper still applies to that peak. This avoids dumping a
+ * late joiner into week-6 volume on day one.
+ *
+ * Week-over-week rise for build weeks is BUILD_WEEKLY_INCREASE (7.5%),
+ * which must stay ≤ WEEKLY_INCREASE_CAP (10%).
+ */
+export function weekMultiplier(_weekIndex: number, _keptWeeks?: readonly number[]): number {
+  return notImplemented("weekMultiplier");
+}
+
+/**
+ * Build the 12-week (or compressed) calendar.
+ *
+ * - Use blockDates(today, prDate) for startDate / weeks / compressed.
+ * - Each kept week has exactly 2 weekly-pull slots on pullDays (earlier
+ *   weekday = slot 0). Week 6 slot 1 is type max_test.
+ * - Cross days from placeCrossDays; none share a date with a pull slot.
+ * - pr_attempt is an extra session on prDate (not one of the two weekly slots).
+ * - Last weekly-pull date must be ≥ LAST_PULL_BEFORE_PR_DAYS before prDate;
+ *   shift or drop that slot if not.
+ * - Pull prescriptions use weekMultiplier(weekIndex, weeks).
+ * - Same input → deep-equal output. No Date.now, no Math.random.
+ */
+export function generatePlan(_input: GeneratePlanInput): Plan {
+  return notImplemented("generatePlan");
+}

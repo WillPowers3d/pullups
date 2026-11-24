@@ -37,7 +37,7 @@ function sessionFromTrack(track: Track, hit: boolean, missBy = 0): LoggedSet[] {
 }
 
 // T09: remove `.skip` when implementing this ticket.
-describe.skip("T09 progression", () => {
+describe("T09 progression", () => {
   it("two sessions of all hits at RIR ≥ 1 progress P2 by +1 rep", () => {
     const cur = sessionFromTrack(SAMPLE_TRACK, true);
     const decision = progress({

@@ -64,7 +64,7 @@ describe("T05 warm-up, ordering, volume score", () => {
 });
 
 // T06: remove `.skip` when implementing this ticket.
-describe.skip("T06 pull-session prescription", () => {
+describe("T06 pull-session prescription", () => {
   const base = {
     maxReps: 10,
     ladder: FULL_LADDER,

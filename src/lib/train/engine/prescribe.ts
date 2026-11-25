@@ -1,6 +1,5 @@
 import { TRAIN_CONFIG } from "@/lib/train/config";
 import { variationFactor, difficultyRank } from "@/lib/train/engine/ladder";
-import { notImplemented } from "@/lib/train/engine/not-implemented";
 import type {
   Equipment,
   ExerciseName,
@@ -81,10 +80,95 @@ export function volumeScore(sets: PrescribedSet[], bodyKg?: number): number {
  * maxReps ≤ BEGINNER_MAX_INCLUSIVE:
  *   P1 negative × 3, P2 band-heavy or australian × 5, P3 australian × 10.
  */
-export function initialTrack(_maxReps: number, _ladder: Variation[], _bodyKg?: number): Track {
-  return notImplemented("initialTrack");
+export function initialTrack(maxReps: number, ladder: Variation[], _bodyKg?: number): Track {
+  const {
+    BEGINNER_MAX_INCLUSIVE,
+    P1_WEIGHTED_MIN_MAX,
+    P1_C2B_MIN_MAX,
+    P1_PCT_OF_MAX,
+    P1_REP_RANGE,
+    P2_PCT_OF_MAX,
+    P3_DEFAULT_REPS,
+    INITIAL_WEIGHT_KG,
+  } = TRAIN_CONFIG;
+  const has = (v: Variation) => ladder.includes(v);
+
+  if (maxReps <= BEGINNER_MAX_INCLUSIVE) {
+    return {
+      p1: { variation: "negative", addedKg: 0, reps: BEGINNER_REPS.p1 },
+      p2: { variation: has("band-heavy") ? "band-heavy" : "australian", addedKg: 0, reps: BEGINNER_REPS.p2 },
+      p3: { variation: "australian", addedKg: 0, reps: P3_DEFAULT_REPS },
+    };
+  }
+
+  let p1Variation: Variation = "strict";
+  if (has("weighted") && maxReps >= P1_WEIGHTED_MIN_MAX) p1Variation = "weighted";
+  else if (has("chest-to-bar") && maxReps >= P1_C2B_MIN_MAX) p1Variation = "chest-to-bar";
+  const [p1Min, p1Max] = P1_REP_RANGE;
+  const p1Reps = Math.min(p1Max, Math.max(p1Min, Math.round(maxReps * P1_PCT_OF_MAX)));
+
+  return {
+    p1: { variation: p1Variation, addedKg: p1Variation === "weighted" ? INITIAL_WEIGHT_KG : 0, reps: p1Reps },
+    p2: { variation: "strict", addedKg: 0, reps: Math.max(1, Math.round(maxReps * P2_PCT_OF_MAX)) },
+    p3: { variation: has("band-light") ? "band-light" : "australian", addedKg: 0, reps: P3_DEFAULT_REPS },
+  };
 }
 
+/**
+ * Beginner rep counts named in the initialTrack JSDoc (P1 negative × 3,
+ * P2 band-heavy/australian × 5). P3 uses TRAIN_CONFIG.P3_DEFAULT_REPS.
+ * Not in TRAIN_CONFIG yet; T06 may not edit config.ts.
+ */
+const BEGINNER_REPS = { p1: 3, p2: 5 } as const;
+
+/** DESIGN.md §3 / T06: week-12 volume ≤ 0.5 × the week-10 session with the same inputs. */
+const WEEK_12_MAX_FRACTION_OF_PEAK = 0.5;
+
+type PullPhase = "p1" | "p2" | "p3";
+type SetCounts = Record<PullPhase, number>;
+
+function expandSets(track: Track, counts: SetCounts): PrescribedSet[] {
+  const { REST_SEC, DEFAULT_RIR_FLOOR, P3_RIR_FLOOR } = TRAIN_CONFIG;
+  const sets: PrescribedSet[] = [];
+  for (const phase of ["p1", "p2", "p3"] as const) {
+    const entry = track[phase];
+    for (let i = 0; i < counts[phase]; i++) {
+      sets.push({
+        phase,
+        variation: entry.variation,
+        addedKg: entry.addedKg,
+        targetReps: entry.reps,
+        restSec: REST_SEC[phase],
+        rirFloor: phase === "p3" ? P3_RIR_FLOOR : DEFAULT_RIR_FLOOR,
+      });
+    }
+  }
+  return sets;
+}
+
+/**
+ * Set-count algorithm: start at the min-set floor, then round-robin
+ * P2 → P1 → P3 while volumeScore stays ≤ cap and each phase is below its max.
+ */
+function chooseCounts(track: Track, weekIndex: number, cap: number, bodyKg: number): SetCounts {
+  const { P1_SETS, P2_SETS, P3_SETS, WEEK_12_P3_SETS, BLOCK_WEEKS } = TRAIN_CONFIG;
+  const isWeek12 = weekIndex === BLOCK_WEEKS;
+  const counts: SetCounts = { p1: P1_SETS[0], p2: P2_SETS[0], p3: isWeek12 ? WEEK_12_P3_SETS : P3_SETS[0] };
+  const max: SetCounts = { p1: P1_SETS[1], p2: P2_SETS[1], p3: isWeek12 ? WEEK_12_P3_SETS : P3_SETS[1] };
+  let added = true;
+  while (added) {
+    added = false;
+    for (const phase of ["p2", "p1", "p3"] as const) {
+      if (counts[phase] >= max[phase]) continue;
+      const trial = { ...counts, [phase]: counts[phase] + 1 };
+      if (volumeScore(expandSets(track, trial), bodyKg) <= cap) {
+        counts[phase] = trial[phase];
+        added = true;
+      }
+    }
+  }
+  return counts;
+}
 /**
  * Build P1/P2/P3 sets from track (or initialTrack) plus set counts:
  *
@@ -105,8 +189,31 @@ export function initialTrack(_maxReps: number, _ladder: Variation[], _bodyKg?: n
  *   Min: 3×5×(1+2.5/80) + 3×6×1 + 2×10×0.6 = 15.46875+18+12 = 45.46875
  *   +1 P2: 51.46875 → 51.5 ≤ 55. Next P1 or P3 would exceed 55.
  */
-export function prescribePullSession(_input: PrescribePullInput): SessionPlan {
-  return notImplemented("prescribePullSession");
+export function prescribePullSession(input: PrescribePullInput): SessionPlan {
+  const { START_VOLUME_X_MAX, VOLUME_TOLERANCE, BLOCK_WEEKS, TAPER_VOLUME, TAPER_WEEKS } = TRAIN_CONFIG;
+  const { maxReps, ladder, weekIndex, volumeMultiplier, bodyKg } = input;
+  const track = input.track ?? initialTrack(maxReps, ladder, bodyKg);
+  const capFor = (multiplier: number) => START_VOLUME_X_MAX * maxReps * multiplier * (1 + VOLUME_TOLERANCE);
+
+  const peakWeek = BLOCK_WEEKS - TAPER_WEEKS;
+  let cap = capFor(volumeMultiplier);
+  if (weekIndex === BLOCK_WEEKS) {
+    // DESIGN §3: week 12 volume ≤ 0.5 × the week-10 session with the same inputs.
+    // Week 12's multiplier is peak × TAPER_VOLUME[1], so recover the peak and cap
+    // round-robin additions at half of that session's volume. The min-set floor still wins.
+    const peakMultiplier = volumeMultiplier / TAPER_VOLUME[1];
+    const peakSets = expandSets(track, chooseCounts(track, peakWeek, capFor(peakMultiplier), bodyKg));
+    cap = Math.min(cap, volumeScore(peakSets, bodyKg) * WEEK_12_MAX_FRACTION_OF_PEAK);
+  }
+
+  const sets = orderSets(expandSets(track, chooseCounts(track, weekIndex, cap, bodyKg)));
+  return {
+    type: "pull",
+    warmup: sets.length > 0 ? buildWarmup(sets[0]) : [],
+    sets,
+    volumeScore: volumeScore(sets, bodyKg),
+    taper: weekIndex > peakWeek,
+  };
 }
 
 /**

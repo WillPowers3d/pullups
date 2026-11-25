@@ -1,16 +1,16 @@
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { MaxTestForm } from "@/components/train/max-test-form";
 
-export default function TestPage() {
+export default async function TestPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const { prDate } = await searchParams;
+  const value = typeof prDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(prDate) ? prDate : null;
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold tracking-tight">Baseline max test</h1>
-      <Alert>
-        <AlertTitle>Ticket T13</AlertTitle>
-        <AlertDescription>
-          Guided max-test session. Warm-up, one strict max set, optional
-          outbound link to Pullups With Friends for video grading.
-        </AlertDescription>
-      </Alert>
+      <MaxTestForm prDate={value} />
     </div>
   );
 }

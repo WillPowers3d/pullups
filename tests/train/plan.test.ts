@@ -18,7 +18,7 @@ const INPUT: GeneratePlanInput = {
 };
 
 // T08: remove `.skip` when implementing this ticket.
-describe.skip("T08 plan generation", () => {
+describe("T08 plan generation", () => {
   it("places two weekly-pull slots per week, week-6 slot 1 is max_test, PR on prDate", () => {
     const plan = generatePlan(INPUT);
     expect(plan.prDate).toBe("2027-02-21");

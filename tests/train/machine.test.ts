@@ -37,7 +37,7 @@ function finishWarmup(state: MachineState): MachineState {
 }
 
 // T10: remove `.skip` when implementing this ticket.
-describe.skip("T10 session state machine", () => {
+describe("T10 session state machine", () => {
   it("rejects SET_DONE during warmup and leaves state unchanged", () => {
     const before = start();
     expect(before.stage).toBe("warmup");

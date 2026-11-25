@@ -13,7 +13,7 @@ import type { Plan, PlannedSession } from "@/lib/train/engine/types";
 import { addDays } from "@/lib/dates";
 
 // T03: remove `.skip` when implementing this ticket.
-describe.skip("T03 pull-day validation and cross-day placement", () => {
+describe("T03 pull-day validation and cross-day placement", () => {
   it("accepts pairs 3–4 calendar days apart (Mon/Thu, Tue/Fri, Sun/Wed)", () => {
     expect(validatePullDays([1, 4]).ok).toBe(true);
     expect(validatePullDays([2, 5]).ok).toBe(true);
@@ -104,7 +104,7 @@ describe.skip("T03 pull-day validation and cross-day placement", () => {
 });
 
 // T04: remove `.skip` when implementing this ticket.
-describe.skip("T04 block dates and legal moves", () => {
+describe("T04 block dates and legal moves", () => {
   it("aligns a 12-week block so PR Sunday is the last day of week 12", () => {
     const result = blockDates("2026-11-23", "2027-02-21");
     expect(result.startDate).toBe("2026-11-30");

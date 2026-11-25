@@ -1,4 +1,4 @@
-import { notImplemented } from "@/lib/train/engine/not-implemented";
+import { TRAIN_CONFIG } from "@/lib/train/config";
 import type { BadgeId } from "@/lib/train/config";
 import type { TrainStats } from "@/lib/train/engine/types";
 
@@ -13,6 +13,36 @@ import type { TrainStats } from "@/lib/train/engine/types";
  * - block_complete: stats.blockComplete
  *   (24 of 24 weekly-pull slots done — 2 per week × 12, not counting PR)
  */
-export function trainBadges(_stats: TrainStats): BadgeId[] {
-  return notImplemented("trainBadges");
+export function trainBadges(stats: TrainStats): BadgeId[] {
+  const badges: BadgeId[] = [];
+
+  for (const id of TRAIN_CONFIG.BADGE_IDS) {
+    switch (id) {
+      case "block_started":
+        if (stats.blockStarted) badges.push(id);
+        break;
+      case "warmup_perfect":
+        if (stats.warmupPerfectCount >= 10) badges.push(id);
+        break;
+      case "on_the_clock":
+        if (stats.zeroOverrunCount >= 10) badges.push(id);
+        break;
+      case "mid_test_up":
+        if (
+          stats.week6Delta !== null &&
+          stats.week6Delta >= TRAIN_CONFIG.MDC_REPS
+        ) {
+          badges.push(id);
+        }
+        break;
+      case "new_pr":
+        if (stats.prDelta !== null && stats.prDelta > 0) badges.push(id);
+        break;
+      case "block_complete":
+        if (stats.blockComplete) badges.push(id);
+        break;
+    }
+  }
+
+  return badges;
 }

@@ -7,7 +7,7 @@ import {
 } from "@/lib/train/schemas";
 
 // T12: remove `.skip` when implementing this ticket.
-describe.skip("T12 zod schemas", () => {
+describe("T12 zod schemas", () => {
   it("profilePut rejects a 72h-invalid pull-day pair at the type level (length or range)", () => {
     const schema = profilePutSchema();
     expect(schema.safeParse({ pullDays: [1] }).success).toBe(false);

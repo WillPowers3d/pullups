@@ -7,6 +7,7 @@ import type {
   SessionPlan,
   SessionStatus,
   SessionType,
+  TrainStats,
 } from "@/lib/train/engine/types";
 import { TRAIN_CONFIG } from "@/lib/train/config";
 
@@ -379,4 +380,105 @@ export function listBadges(
       "SELECT badge_id, earned_at FROM train_badges WHERE user_id = ? ORDER BY earned_at",
     )
     .all(userId) as { badge_id: string; earned_at: string }[];
+}
+
+// ── T12 additions (used by the API routes) ──────────────────────────────────
+
+export function getBlock(id: string): BlockRow | null {
+  const db = getDb();
+  const row = db.prepare("SELECT * FROM train_blocks WHERE id = ?").get(id) as BlockRow | undefined;
+  return row ?? null;
+}
+
+export function listBlocks(userId: string): BlockRow[] {
+  const db = getDb();
+  return db
+    .prepare("SELECT * FROM train_blocks WHERE user_id = ? ORDER BY created_at")
+    .all(userId) as BlockRow[];
+}
+
+export function updateBlock(
+  id: string,
+  patch: { prDate?: string; startDate?: string; currentMax?: number; status?: BlockStatus; compressed?: boolean },
+): BlockRow {
+  const db = getDb();
+  const current = getBlock(id);
+  if (!current) throw new Error(`Block not found: ${id}`);
+  db.prepare(
+    "UPDATE train_blocks SET pr_date = ?, start_date = ?, current_max = ?, status = ?, compressed = ? WHERE id = ?",
+  ).run(
+    patch.prDate ?? current.pr_date,
+    patch.startDate ?? current.start_date,
+    patch.currentMax ?? current.current_max,
+    patch.status ?? current.status,
+    patch.compressed === undefined ? current.compressed : patch.compressed ? 1 : 0,
+    id,
+  );
+  return getBlock(id)!;
+}
+
+/** Delete `planned` sessions on or after `fromDate` (and their unlogged sets). */
+export function deletePlannedSessionsFrom(blockId: string, fromDate: string): number {
+  const db = getDb();
+  const tx = db.transaction(() => {
+    db.prepare(
+      `DELETE FROM train_sets WHERE session_id IN (
+         SELECT id FROM train_sessions WHERE block_id = ? AND status = 'planned' AND date >= ?)`,
+    ).run(blockId, fromDate);
+    return db
+      .prepare("DELETE FROM train_sessions WHERE block_id = ? AND status = 'planned' AND date >= ?")
+      .run(blockId, fromDate).changes;
+  });
+  return tx();
+}
+
+export function getSet(id: string): SetRow | null {
+  const db = getDb();
+  const row = db.prepare("SELECT * FROM train_sets WHERE id = ?").get(id) as SetRow | undefined;
+  return row ?? null;
+}
+
+function isWeeklyPullRow(s: SessionRow): boolean {
+  return s.type === "pull" || (s.type === "max_test" && s.week_index === 6);
+}
+
+/** Aggregate stats for badges and the dashboard (see TrainStats). */
+export function trainStats(block: BlockRow): TrainStats {
+  const sessions = listSessions(block.id);
+  const done = sessions.filter((s) => s.status === "done");
+  let restOverrunCount = 0;
+  let zeroOverrunCount = 0;
+  let warmupPerfectCount = 0;
+  let week6Delta: number | null = null;
+  let prDelta: number | null = null;
+
+  for (const s of done) {
+    const sets = listSets(s.id);
+    const allowance = s.rest_extensions * TRAIN_CONFIG.REST_EXTENSION_SEC;
+    const overruns = sets.filter(
+      (x) => x.rest_taken_sec !== null && x.rest_taken_sec > x.rest_sec + allowance,
+    ).length;
+    restOverrunCount += overruns;
+    if (overruns === 0 && sets.some((x) => x.logged_at !== null)) zeroOverrunCount += 1;
+    if (s.warmup_skipped === "[]") warmupPerfectCount += 1;
+    const testReps = sets.find((x) => x.phase === "test")?.actual_reps ?? null;
+    if (testReps !== null && s.type === "max_test" && s.week_index === TRAIN_CONFIG.MAX_TEST_WEEKS[1]) {
+      week6Delta = testReps - block.baseline_max;
+    }
+    if (testReps !== null && s.type === "pr_attempt") prDelta = testReps - block.baseline_max;
+  }
+
+  const weeklySlots = sessions.filter(isWeeklyPullRow);
+  const pullSessionsCompleted = weeklySlots.filter((s) => s.status === "done").length;
+  return {
+    sessionsCompleted: done.length,
+    pullSessionsCompleted,
+    warmupPerfectCount,
+    restOverrunCount,
+    zeroOverrunCount,
+    week6Delta,
+    prDelta,
+    blockComplete: weeklySlots.length > 0 && pullSessionsCompleted === weeklySlots.length,
+    blockStarted: true,
+  };
 }
